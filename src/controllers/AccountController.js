@@ -7,9 +7,9 @@ const tarifaTransferencia = 8;
 export async function listAllAccounts(req, res) {
   await accountModel.find((err, accounts) => {
     if (err) {
-      return res.status(500).json(err);
+      return res.status(400).json(err);
     }
-    return res.status(200).json(accounts);
+    return res.status(202).json(accounts);
   });
 }
 
@@ -19,7 +19,7 @@ export async function createAccount(req, res) {
   const accountFind = await accountModel.findOne({ agencia, conta });
   if (accountFind) {
     return res
-      .status(500)
+      .status(406)
       .json({ result: `Conta já em uso. Cliente: ${accountFind.name}` });
   }
 
@@ -29,7 +29,7 @@ export async function createAccount(req, res) {
       if (err) {
         return res.status(500).json(err);
       }
-      res.status(200).json({
+      res.status(201).json({
         _id: account._id,
         agencia: account.agencia,
         conta: account.conta,
@@ -44,14 +44,14 @@ export async function createAccount(req, res) {
 export async function income(req, res) {
   const { agencia, conta, value } = req.body;
   if (value <= 0) {
-    return res.status(500).json({
+    return res.status(406).json({
       result: `Valor inválido: ${formatMoney(value)}`,
     });
   }
 
   const findAccount = await accountModel.findOne({ agencia, conta });
   if (!findAccount) {
-    return res.status(500).json({
+    return res.status(404).json({
       result: `Conta não existe. Agência: ${agencia}, Conta corrente: ${conta}`,
     });
   }
@@ -62,7 +62,7 @@ export async function income(req, res) {
       { $inc: { balance: value } },
       { new: true, runValidators: true }
     );
-    res.status(200).json({
+    res.status(202).json({
       _id: accountIncome._id,
       agencia: accountIncome.agencia,
       conta: accountIncome.conta,
@@ -79,14 +79,14 @@ export async function outcome(req, res) {
   const { agencia, conta, value } = req.body;
 
   if (value <= 0) {
-    return res.status(500).json({
+    return res.status(406).json({
       result: `Valor inválido: ${formatMoney(value)}`,
     });
   }
 
   const findAccount = await accountModel.findOne({ agencia, conta });
   if (!findAccount) {
-    return res.status(500).json({
+    return res.status(404).json({
       result: `Conta não existe. Agência: ${agencia}, Conta corrente: ${conta}`,
     });
   }
@@ -94,7 +94,7 @@ export async function outcome(req, res) {
   const saqueComTarifa = value + tarifaSaque;
 
   if (findAccount.balance - saqueComTarifa < 0) {
-    return res.status(404).json({
+    return res.status(406).json({
       result: 'Saldo insuficiente.',
       saldo: formatMoney(findAccount.balance),
       depósito: formatMoney(saqueComTarifa),
@@ -107,7 +107,7 @@ export async function outcome(req, res) {
       { $inc: { balance: -saqueComTarifa } },
       { new: true, runValidators: true }
     );
-    res.status(200).json({
+    res.status(202).json({
       _id: accountOutcome._id,
       agencia: accountOutcome.agencia,
       conta: accountOutcome.conta,
@@ -126,7 +126,7 @@ export async function viewAccount(req, res) {
 
   const findAccount = await accountModel.findOne({ agencia, conta });
   if (!findAccount) {
-    return res.status(500).json({
+    return res.status(404).json({
       result: `Conta não existe. Agência: ${agencia}, Conta corrente: ${conta}`,
     });
   }
@@ -134,7 +134,7 @@ export async function viewAccount(req, res) {
     if (err) {
       return res.status(500).json(err);
     }
-    res.status(200).json({
+    res.status(202).json({
       saldo: formatMoney(account.balance),
       agencia: account.agencia,
       conta: account.conta,
@@ -149,7 +149,7 @@ export async function deleteAccount(req, res) {
 
   const findAccount = await accountModel.findOne({ agencia, conta });
   if (!findAccount) {
-    return res.status(500).json({
+    return res.status(404).json({
       result: `Conta não existe. Agência: ${agencia}, Conta corrente: ${conta}`,
     });
   }
@@ -163,7 +163,7 @@ export async function deleteAccount(req, res) {
       if (err) {
         return res.status(500).json(err);
       }
-      res.status(200).json({
+      res.status(202).json({
         result: `A conta ${conta} de ${findAccount.name} foi excluida com sucesso`,
         agencia,
         qtdeAtivas: accounts.length,
@@ -177,7 +177,7 @@ export async function transferBetweenAccounts(req, res) {
   const { ccOrigem, ccDestino, value } = req.body;
 
   if (value <= 0) {
-    return res.status(500).json({
+    return res.status(406).json({
       result: `Valor inválido: ${formatMoney(value)}`,
     });
   }
@@ -191,8 +191,8 @@ export async function transferBetweenAccounts(req, res) {
         return res.status(500).json(err);
       }
       if (contas.length !== 2) {
-        return res.status(400).json({
-          result: 'Conta não encontrada.',
+        return res.status(404).json({
+          result: 'Conta não existe.',
           accountNotFound: contas[0].conta === ccOrigem ? ccDestino : ccOrigem,
         });
       }
@@ -207,7 +207,7 @@ export async function transferBetweenAccounts(req, res) {
         : (valorTransferencia = value);
 
       if (origem.balance - valorTransferencia < 0) {
-        return res.status(400).json({
+        return res.status(406).json({
           result: 'Saldo insuficiente.',
           saldo: formatMoney(origem.balance),
           valor_transferência: formatMoney(valorTransferencia),
@@ -227,21 +227,21 @@ export async function transferBetweenAccounts(req, res) {
     { $set: { balance: destino.balance } }
   );
 
-  res.status(200).json({ date: formatDate(new Date()), origem, destino });
+  res.status(202).json({ date: formatDate(new Date()), origem, destino });
 }
 
 export async function averageBalance(req, res) {
-  const agencia = req.params.agencia;
+  const agency = req.params.agency;
 
-  const findAgency = await accountModel.findOne({ agencia });
+  const findAgency = await accountModel.findOne({ agencia: Number(agency) });
   if (!findAgency) {
-    return res.status(500).json({
-      result: `Agência não existe. Agência: ${agencia}`,
+    return res.status(404).json({
+      result: `Agência não existe. Agência: ${agency}`,
     });
   }
 
   const averageAgency = await accountModel.aggregate([
-    { $match: { agencia: Number(agencia) } },
+    { $match: { agencia: Number(agency) } },
     {
       $group: {
         _id: null,
@@ -251,15 +251,15 @@ export async function averageBalance(req, res) {
   ]);
 
   res
-    .status(200)
-    .json({ agencia, media: formatMoney(averageAgency[0].avgBalance) });
+    .status(202)
+    .json({ agency, media: formatMoney(averageAgency[0].avgBalance) });
 }
 
 export async function minorBalance(req, res) {
   const limit = req.params.limit;
 
   if (!limit || limit < 0) {
-    return res.status(500).json({
+    return res.status(406).json({
       result: `Informe um valor válido para limit: ${limit}`,
     });
   }
@@ -269,5 +269,45 @@ export async function minorBalance(req, res) {
     { $limit: Number(limit) },
   ]);
 
-  res.status(200).json(accounts);
+  res.status(202).json(accounts);
+}
+
+export async function majorBalance(req, res) {
+  const limit = req.params.limit;
+
+  if (!limit || limit < 0) {
+    return res.status(406).json({
+      result: `Informe um valor válido para limit: ${limit}`,
+    });
+  }
+
+  const accounts = await accountModel.aggregate([
+    { $sort: { balance: -1, agencia: 1 } },
+    { $limit: Number(limit) },
+  ]);
+
+  res.status(202).json(accounts);
+}
+
+export async function agencyPrivate(req, res) {
+  const accounts = await accountModel.aggregate([
+    { $sort: { balance: -1 } },
+    {
+      $group: {
+        _id: '$agencia',
+        agencia: { $first: '$agencia' },
+        conta: { $first: '$conta' },
+        balance: { $max: '$balance' },
+        name: { $first: '$name' },
+      },
+    },
+    {
+      $project: {
+        _id: 0,
+      },
+    },
+    { $sort: { agencia: 1 } },
+  ]);
+
+  res.status(202).json({ privateAccounts: accounts });
 }
