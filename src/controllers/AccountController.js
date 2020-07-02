@@ -3,6 +3,7 @@ import { formatMoney, formatDate } from '../helpers/index.js';
 
 const tarifaSaque = 1;
 const tarifaTransferencia = 8;
+const privateAgencyNumber = 99;
 
 export async function listAllAccounts(req, res) {
   await accountModel.find((err, accounts) => {
@@ -265,7 +266,7 @@ export async function minorBalance(req, res) {
   }
 
   const accounts = await accountModel.aggregate([
-    { $sort: { balance: 1, agencia: 1 } },
+    { $sort: { balance: 1 } },
     { $limit: Number(limit) },
   ]);
 
@@ -282,7 +283,7 @@ export async function majorBalance(req, res) {
   }
 
   const accounts = await accountModel.aggregate([
-    { $sort: { balance: -1, agencia: 1 } },
+    { $sort: { balance: -1 } },
     { $limit: Number(limit) },
   ]);
 
@@ -291,13 +292,15 @@ export async function majorBalance(req, res) {
 
 export async function agencyPrivate(req, res) {
   const accounts = await accountModel.aggregate([
+    { $match: { agencia: { $nin: [99] } } },
     { $sort: { balance: -1 } },
     {
       $group: {
         _id: '$agencia',
-        agencia: { $first: '$agencia' },
+        agencia_antiga: { $first: '$agencia' },
         conta: { $first: '$conta' },
         balance: { $max: '$balance' },
+
         name: { $first: '$name' },
       },
     },
@@ -306,8 +309,23 @@ export async function agencyPrivate(req, res) {
         _id: 0,
       },
     },
-    { $sort: { agencia: 1 } },
+    { $sort: { balance: -1, agencia_antiga: 1 } },
   ]);
 
-  res.status(202).json({ privateAccounts: accounts });
+  const totalBalance = accounts.reduce((acc, account) => {
+    return acc + account.balance;
+  }, 0);
+
+  accounts.forEach(async (account) => {
+    await accountModel.findOneAndUpdate(
+      { conta: account.conta },
+      { $set: { agencia: privateAgencyNumber } },
+      { new: true, runValidators: true }
+    );
+  });
+
+  res.status(202).json({
+    mediaBalance: formatMoney(totalBalance / accounts.length),
+    privateAccounts: accounts,
+  });
 }
