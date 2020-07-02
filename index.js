@@ -4,9 +4,9 @@ import mongoose from 'mongoose';
 
 //Conexão com mongoDB
 const credentials = {
-  user: 'igti',
-  password: 'igti123',
-  database: 'mybank',
+  user: 'USER',
+  password: 'PASSWORD',
+  database: 'DATABASE_NAME',
 };
 
 (async () => {
