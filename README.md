@@ -12,7 +12,11 @@ You will also see any lint errors in the console.
 
 ## Objetivos
 
-Exercitar os seguintes conceitos trabalhados no Módulo:  Implementar uma API e integra-la ao MongoDB.  Persistência de Dados no MongoDB Atlas (Daas).  Estruturação e persistência dos dados pelo mongoose.
+Exercitar os seguintes conceitos trabalhados no Módulo:
+
+- Implementar uma API e integra-la ao MongoDB.
+- Persistência de Dados no MongoDB Atlas (Daas).
+- Estruturação e persistência dos dados pelo mongoose.
 
 ## Enunciado
 
