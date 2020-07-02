@@ -1,8 +1,8 @@
 import accountModel from '../models/AccountModel.js';
 import { formatMoney, formatDate } from '../helpers/index.js';
 
-const tarifaSaque = 1;
-const tarifaTransferencia = 8;
+const draftFee = 1;
+const transferFee = 8;
 const privateAgencyNumber = 99;
 
 export async function listAllAccounts(req, res) {
@@ -92,20 +92,20 @@ export async function outcome(req, res) {
     });
   }
 
-  const saqueComTarifa = value + tarifaSaque;
+  const draftWithFee = value + draftFee;
 
-  if (findAccount.balance - saqueComTarifa < 0) {
+  if (findAccount.balance - draftWithFee < 0) {
     return res.status(406).json({
       result: 'Saldo insuficiente.',
       saldo: formatMoney(findAccount.balance),
-      depósito: formatMoney(saqueComTarifa),
+      depósito: formatMoney(draftWithFee),
     });
   }
 
   try {
     const accountOutcome = await accountModel.findOneAndUpdate(
       { agencia, conta },
-      { $inc: { balance: -saqueComTarifa } },
+      { $inc: { balance: -draftWithFee } },
       { new: true, runValidators: true }
     );
     res.status(202).json({
@@ -113,7 +113,7 @@ export async function outcome(req, res) {
       agencia: accountOutcome.agencia,
       conta: accountOutcome.conta,
       name: accountOutcome.name,
-      saqueComTarifa: formatMoney(saqueComTarifa),
+      saqueComTarifa: formatMoney(draftWithFee),
       saldo: formatMoney(accountOutcome.balance),
       data: formatDate(new Date()),
     });
@@ -183,7 +183,7 @@ export async function transferBetweenAccounts(req, res) {
     });
   }
 
-  let origem, destino;
+  let source, destiny;
 
   await accountModel.find(
     { conta: { $in: [ccOrigem, ccDestino] } },
@@ -198,37 +198,37 @@ export async function transferBetweenAccounts(req, res) {
         });
       }
 
-      origem = contas[0].conta === ccOrigem ? contas[0] : contas[1];
-      destino = contas[1].conta === ccDestino ? contas[1] : contas[0];
+      source = contas[0].conta === ccOrigem ? contas[0] : contas[1];
+      destiny = contas[1].conta === ccDestino ? contas[1] : contas[0];
 
-      let valorTransferencia = 0;
+      let transferValue = 0;
 
-      origem.agencia !== destino.agencia
-        ? (valorTransferencia = value + tarifaTransferencia)
-        : (valorTransferencia = value);
+      source.agencia !== destiny.agencia
+        ? (transferValue = value + transferFee)
+        : (transferValue = value);
 
-      if (origem.balance - valorTransferencia < 0) {
+      if (source.balance - transferValue < 0) {
         return res.status(406).json({
           result: 'Saldo insuficiente.',
-          saldo: formatMoney(origem.balance),
-          valor_transferência: formatMoney(valorTransferencia),
+          saldo: formatMoney(source.balance),
+          valor_transferência: formatMoney(transferValue),
         });
       }
-      origem.balance -= valorTransferencia;
-      destino.balance += value;
+      source.balance -= transferValue;
+      destiny.balance += value;
     }
   );
 
   await accountModel.updateOne(
-    { conta: origem.conta },
-    { $set: { balance: origem.balance } }
+    { conta: source.conta },
+    { $set: { balance: source.balance } }
   );
   await accountModel.updateOne(
-    { conta: destino.conta },
-    { $set: { balance: destino.balance } }
+    { conta: destiny.conta },
+    { $set: { balance: destiny.balance } }
   );
 
-  res.status(202).json({ date: formatDate(new Date()), origem, destino });
+  res.status(202).json({ date: formatDate(new Date()), source, destiny });
 }
 
 export async function averageBalance(req, res) {

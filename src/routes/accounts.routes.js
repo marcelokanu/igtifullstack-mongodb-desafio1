@@ -22,9 +22,9 @@ app.get('/accounts', listAllAccounts);
 
 app.post('/account/create', createAccount);
 
-app.patch('/account/income', income);
+app.patch('/account/deposit', income);
 
-app.patch('/account/outcome', outcome);
+app.patch('/account/draft', outcome);
 
 app.get('/account/view', viewAccount);
 

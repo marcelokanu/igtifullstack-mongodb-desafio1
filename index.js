@@ -1,18 +1,12 @@
+import 'dotenv/config.js';
 import express from 'express';
 import routes from './src/routes/accounts.routes.js';
 import mongoose from 'mongoose';
 
-//Conexão com mongoDB
-const credentials = {
-  user: 'USER',
-  password: 'PASSWORD',
-  database: 'DATABASE_NAME',
-};
-
 (async () => {
   try {
     await mongoose.connect(
-      `mongodb+srv://${credentials.user}:${credentials.password}@cluster0-qqm3y.mongodb.net/${credentials.database}?retryWrites=true&w=majority`,
+      `mongodb+srv://${process.env.USER_DB}:${process.env.PASSWORD_DB}@cluster0-qqm3y.mongodb.net/${process.env.DATABASE_NAME}?retryWrites=true&w=majority`,
       {
         useNewUrlParser: true,
         useUnifiedTopology: true,
